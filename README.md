@@ -65,3 +65,7 @@ one, custom resources included:
 3. Add a test next to it: a manifest in, the expected manifest out.
 
 Rules run in order: common, then group, then kind.
+
+## License
+
+Apache License 2.0, see [LICENSE](LICENSE).
