@@ -1,0 +1,52 @@
+apiVersion: krew.googlecontainertools.github.com/v1alpha2
+kind: Plugin
+metadata:
+  name: copy
+spec:
+  version: {{ .TagName }}
+  homepage: https://github.com/jnummelin/kubectl-copy
+  shortDescription: Copy a resource under a new name
+  description: |
+    Copies any resource, custom resources included, under a new name.
+
+    Reads the resource, strips the state that belongs to the original
+    (status, uid, resourceVersion, ownerReferences, finalizers and kind
+    specific state such as a Service's clusterIP), opens the result in your
+    editor like "kubectl edit" does, and creates it when the editor exits.
+  platforms:
+  - selector:
+      matchLabels:
+        os: linux
+        arch: amd64
+    {{addURIAndSha "https://github.com/jnummelin/kubectl-copy/releases/download/{{ .TagName }}/kubectl-copy_linux_amd64.tar.gz" .TagName }}
+    bin: kubectl-copy
+  - selector:
+      matchLabels:
+        os: linux
+        arch: arm64
+    {{addURIAndSha "https://github.com/jnummelin/kubectl-copy/releases/download/{{ .TagName }}/kubectl-copy_linux_arm64.tar.gz" .TagName }}
+    bin: kubectl-copy
+  - selector:
+      matchLabels:
+        os: darwin
+        arch: amd64
+    {{addURIAndSha "https://github.com/jnummelin/kubectl-copy/releases/download/{{ .TagName }}/kubectl-copy_darwin_amd64.tar.gz" .TagName }}
+    bin: kubectl-copy
+  - selector:
+      matchLabels:
+        os: darwin
+        arch: arm64
+    {{addURIAndSha "https://github.com/jnummelin/kubectl-copy/releases/download/{{ .TagName }}/kubectl-copy_darwin_arm64.tar.gz" .TagName }}
+    bin: kubectl-copy
+  - selector:
+      matchLabels:
+        os: windows
+        arch: amd64
+    {{addURIAndSha "https://github.com/jnummelin/kubectl-copy/releases/download/{{ .TagName }}/kubectl-copy_windows_amd64.zip" .TagName }}
+    bin: kubectl-copy.exe
+  - selector:
+      matchLabels:
+        os: windows
+        arch: arm64
+    {{addURIAndSha "https://github.com/jnummelin/kubectl-copy/releases/download/{{ .TagName }}/kubectl-copy_windows_arm64.zip" .TagName }}
+    bin: kubectl-copy.exe

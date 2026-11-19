@@ -1,0 +1,44 @@
+version: 2
+
+project_name: kubectl-copy
+
+builds:
+  - binary: kubectl-copy
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
+
+release:
+  # Created as a draft, so the notes can be edited before publishing by hand.
+  draft: true
+  # Re-running the workflow for a tag replaces its draft, not adds a second one.
+  replace_existing_draft: true
+  # A tag like v1.2.3-rc.1 is published as a pre-release.
+  prerelease: auto
