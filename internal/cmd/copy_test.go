@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"bytes"
 	"strings"
 	"testing"
+
+	"k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
 func TestParseArgs(t *testing.T) {
@@ -31,5 +34,23 @@ func TestParseArgs(t *testing.T) {
 				t.Errorf("got (%q, %q), want (%q, %q)", res, name, tt.wantResource, tt.wantName)
 			}
 		})
+	}
+}
+
+func TestVersionFlag(t *testing.T) {
+	version = "v1.2.3"
+	t.Cleanup(func() { version = "" })
+
+	var out bytes.Buffer
+	cmd := NewCopyCommand(genericiooptions.IOStreams{In: strings.NewReader(""), Out: &out, ErrOut: &out})
+	cmd.SetArgs([]string{"--version"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := out.String(), "kubectl-copy v1.2.3\n"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+	if f := cmd.Flags().ShorthandLookup("v"); f != nil {
+		t.Errorf("-v must stay free, but is the shorthand of --%s", f.Name)
 	}
 }

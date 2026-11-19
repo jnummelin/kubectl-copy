@@ -62,6 +62,7 @@ func NewCopyCommand(streams genericiooptions.IOStreams) *cobra.Command {
 		Long:         copyLong,
 		Example:      copyExample,
 		Args:         cobra.RangeArgs(1, 2),
+		Version:      buildVersion(),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return o.run(cmd.Context(), args)
@@ -71,6 +72,10 @@ func NewCopyCommand(streams genericiooptions.IOStreams) *cobra.Command {
 	cmd.SetOut(streams.Out)
 	cmd.SetErr(streams.ErrOut)
 	cmd.Flags().BoolVar(&o.noEdit, "no-edit", false, "Create the copy without opening an editor")
+	// Defined here so that cobra does not also claim -v, which kubectl users
+	// know as the log verbosity flag.
+	cmd.Flags().Bool("version", false, "Print the version of kubectl-copy")
+	cmd.SetVersionTemplate("kubectl-copy {{.Version}}\n")
 	o.configFlags.AddFlags(cmd.Flags())
 	return cmd
 }

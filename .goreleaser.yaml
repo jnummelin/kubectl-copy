@@ -11,7 +11,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w
+      - -s -w -X github.com/jnummelin/kubectl-copy/internal/cmd.version=v{{ .Version }}
 
 archives:
   - name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
