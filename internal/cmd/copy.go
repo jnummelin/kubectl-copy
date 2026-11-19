@@ -43,7 +43,7 @@ The editor is taken from KUBE_EDITOR or EDITOR, falling back to vi.`
   kubectl copy deployment/web web-canary
 
   # Copy without opening the editor
-  kubectl copy configmap settings settings-backup --no-edit`
+  kubectl copy configmap/settings settings-backup --no-edit`
 )
 
 type copyOptions struct {
@@ -59,11 +59,11 @@ func NewCopyCommand(streams genericiooptions.IOStreams) *cobra.Command {
 		configFlags: genericclioptions.NewConfigFlags(true),
 	}
 	cmd := &cobra.Command{
-		Use:          "kubectl copy (TYPE/NAME | TYPE NAME) [NEW_NAME]",
+		Use:          "kubectl copy TYPE/NAME [NEW_NAME]",
 		Short:        "Copy a resource under a new name",
 		Long:         copyLong,
 		Example:      copyExample,
-		Args:         cobra.RangeArgs(1, 3),
+		Args:         cobra.RangeArgs(1, 2),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return o.run(cmd.Context(), args)
@@ -77,26 +77,21 @@ func NewCopyCommand(streams genericiooptions.IOStreams) *cobra.Command {
 	return cmd
 }
 
-// splitArgs separates the resource arguments from the optional new name.
-func splitArgs(args []string) (resourceArgs []string, newName string, err error) {
-	n := 2 // TYPE NAME
-	if strings.Contains(args[0], "/") {
-		n = 1 // TYPE/NAME
+// parseArgs returns the TYPE/NAME of the resource to copy and the optional
+// new name.
+func parseArgs(args []string) (source, newName string, err error) {
+	kind, name, found := strings.Cut(args[0], "/")
+	if !found || kind == "" || name == "" || strings.Contains(name, "/") {
+		return "", "", fmt.Errorf("the resource to copy must be given as TYPE/NAME, for example pod/my-pod; got %q", args[0])
 	}
-	if len(args) < n {
-		return nil, "", errors.New("you must specify the resource to copy as TYPE/NAME or TYPE NAME")
+	if len(args) > 1 {
+		newName = args[1]
 	}
-	if len(args) > n+1 {
-		return nil, "", fmt.Errorf("unexpected arguments: %s", strings.Join(args[n+1:], " "))
-	}
-	if len(args) == n+1 {
-		newName = args[n]
-	}
-	return args[:n], newName, nil
+	return args[0], newName, nil
 }
 
 func (o *copyOptions) run(ctx context.Context, args []string) error {
-	resourceArgs, newName, err := splitArgs(args)
+	sourceArg, newName, err := parseArgs(args)
 	if err != nil {
 		return err
 	}
@@ -108,7 +103,7 @@ func (o *copyOptions) run(ctx context.Context, args []string) error {
 	infos, err := resource.NewBuilder(o.configFlags).
 		Unstructured().
 		NamespaceParam(namespace).DefaultNamespace().
-		ResourceTypeOrNameArgs(false, resourceArgs...).
+		ResourceTypeOrNameArgs(false, sourceArg).
 		SingleResourceType().
 		Flatten().
 		Do().

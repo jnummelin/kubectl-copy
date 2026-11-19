@@ -19,7 +19,7 @@ mv kubectl-copy /usr/local/bin/   # anywhere on your PATH
 ## Usage
 
 ```
-kubectl copy (TYPE/NAME | TYPE NAME) [NEW_NAME] [--no-edit] [kubectl flags]
+kubectl copy TYPE/NAME [NEW_NAME] [--no-edit] [kubectl flags]
 ```
 
 - The copy is named `NEW_NAME`, or `<name>-copy` by default. You can change the
