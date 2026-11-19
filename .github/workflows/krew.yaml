@@ -1,0 +1,29 @@
+name: Krew
+
+# Runs when a release is published, that is when its draft is published by
+# hand, and asks krew-release-bot to open the version bump PR in krew-index
+# from the .krew.yaml template. Pre-releases are skipped.
+#
+# The first version of the plugin has to be submitted to krew-index by hand;
+# until that PR is merged this workflow has nothing to update.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  krew-index:
+    name: Update krew-index
+    # krew gets stable versions only.
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Update new version in krew-index
+        uses: rajatjindal/krew-release-bot@c970b8a8f6dbc2f2285a26e3ae160903b87002c3 # v0.0.51
