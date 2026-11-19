@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -16,7 +15,6 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/kubectl/pkg/cmd/util/editor"
 	"sigs.k8s.io/yaml"
 )
 
@@ -31,8 +29,8 @@ kind specific allocated state such as a Service's clusterIP), opens the result
 in your editor and creates it when the editor exits.
 
 The copy is named NEW_NAME, or <name>-copy if NEW_NAME is not given; you can
-also change the name, the namespace or anything else in the editor. Saving an
-empty file cancels the copy.
+also change the name, the namespace or anything else in the editor. Exiting the
+editor without saving, or saving an empty file, cancels the copy.
 
 The editor is taken from KUBE_EDITOR or EDITOR, falling back to vi.`
 
@@ -142,11 +140,7 @@ func (o *copyOptions) run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	edit := editor.NewDefaultEditor([]string{"KUBE_EDITOR", "EDITOR"})
-	launch := func(content []byte) ([]byte, string, error) {
-		return edit.LaunchTempFile("kubectl-copy-", ".yaml", bytes.NewReader(content))
-	}
-	cancelled, err := editAndCreate(header(sourceRef, source), manifest, launch, create)
+	cancelled, err := editAndCreate(header(sourceRef, source), manifest, launchEditor, create)
 	if cancelled {
 		fmt.Fprintln(o.ErrOut, "Copy cancelled.")
 	}

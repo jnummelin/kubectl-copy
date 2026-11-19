@@ -29,22 +29,24 @@ func TestStripHeader(t *testing.T) {
 type fakeEditor struct {
 	t     *testing.T
 	edits []func(shown string) string
+	// quit lists the launches, by index, that exit without saving.
+	quit  map[int]bool
 	shown []string
 	files []string
 }
 
-func (f *fakeEditor) launch(content []byte) ([]byte, string, error) {
-	if len(f.shown) >= len(f.edits) {
+func (f *fakeEditor) launch(content []byte) (edit, error) {
+	n := len(f.shown)
+	if n >= len(f.edits) {
 		f.t.Fatalf("editor launched more than %d times", len(f.edits))
 	}
-	edit := f.edits[len(f.shown)]
 	f.shown = append(f.shown, string(content))
 	file := filepath.Join(f.t.TempDir(), "edit.yaml")
 	if err := os.WriteFile(file, nil, 0o600); err != nil {
 		f.t.Fatal(err)
 	}
 	f.files = append(f.files, file)
-	return []byte(edit(string(content))), file, nil
+	return edit{content: []byte(f.edits[n](string(content))), saved: !f.quit[n], file: file}, nil
 }
 
 func unchanged(s string) string { return s }
@@ -80,7 +82,7 @@ func TestEditAndCreate(t *testing.T) {
 		}
 	})
 
-	t.Run("unchanged manifest is still created", func(t *testing.T) {
+	t.Run("saving without changes still creates", func(t *testing.T) {
 		ed := &fakeEditor{t: t, edits: []func(string) string{unchanged}}
 		calls := 0
 		cancelled, err := editAndCreate("# intro\n", []byte(testManifest), ed.launch, func(*unstructured.Unstructured) error {
@@ -89,6 +91,36 @@ func TestEditAndCreate(t *testing.T) {
 		})
 		if err != nil || cancelled || calls != 1 {
 			t.Errorf("cancelled = %v, err = %v, calls = %d", cancelled, err, calls)
+		}
+	})
+
+	t.Run("exiting without saving cancels", func(t *testing.T) {
+		ed := &fakeEditor{t: t, edits: []func(string) string{unchanged}, quit: map[int]bool{0: true}}
+		cancelled, err := editAndCreate("# intro\n", []byte(testManifest), ed.launch, func(*unstructured.Unstructured) error {
+			t.Fatal("create must not be called")
+			return nil
+		})
+		if err != nil || !cancelled {
+			t.Errorf("cancelled = %v, err = %v", cancelled, err)
+		}
+		if exists(ed.files[0]) {
+			t.Error("temp file was not removed")
+		}
+	})
+
+	t.Run("exiting without saving after an error gives up and keeps the file", func(t *testing.T) {
+		ed := &fakeEditor{t: t, edits: []func(string) string{
+			func(s string) string { return strings.Replace(s, "a-copy", "taken", 1) },
+			unchanged,
+		}, quit: map[int]bool{1: true}}
+		cancelled, err := editAndCreate("# intro\n", []byte(testManifest), ed.launch, func(*unstructured.Unstructured) error {
+			return errors.New("already exists")
+		})
+		if err == nil || cancelled || !strings.Contains(err.Error(), ed.files[1]) {
+			t.Fatalf("cancelled = %v, err = %v", cancelled, err)
+		}
+		if !exists(ed.files[1]) {
+			t.Error("manifest file should be kept for the user")
 		}
 	})
 
@@ -163,6 +195,41 @@ func TestEditAndCreate(t *testing.T) {
 		}
 		if !exists(ed.files[1]) {
 			t.Error("manifest file should be kept for the user")
+		}
+	})
+}
+
+func TestLaunchEditor(t *testing.T) {
+	const content = "# intro\nkind: ConfigMap\n"
+	tests := []struct {
+		name      string
+		editor    string
+		wantSaved bool
+		want      string
+	}{
+		{name: "exit without saving", editor: "true", want: content},
+		{name: "save without changes", editor: "touch", wantSaved: true, want: content},
+		{name: "save with changes", editor: "echo 'a: b' >>", wantSaved: true, want: content + "a: b\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("KUBE_EDITOR", tt.editor)
+			ed, err := launchEditor([]byte(content))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer os.Remove(ed.file)
+			if ed.saved != tt.wantSaved || string(ed.content) != tt.want {
+				t.Errorf("saved = %v, content = %q; want %v, %q", ed.saved, ed.content, tt.wantSaved, tt.want)
+			}
+		})
+	}
+
+	t.Run("editor failure", func(t *testing.T) {
+		t.Setenv("KUBE_EDITOR", "false")
+		if ed, err := launchEditor([]byte(content)); err == nil {
+			os.Remove(ed.file)
+			t.Error("expected an error")
 		}
 	})
 }

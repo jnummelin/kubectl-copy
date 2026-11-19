@@ -24,7 +24,8 @@ kubectl copy TYPE/NAME [NEW_NAME] [--no-edit] [kubectl flags]
 
 - The copy is named `NEW_NAME`, or `<name>-copy` by default. You can change the
   name, the namespace or anything else in the editor.
-- Saving an empty file cancels the copy.
+- Exiting the editor without saving (`:q!` in vi), or saving an empty file,
+  cancels the copy. Saving without changes still creates it.
 - If the API server rejects the copy, the editor reopens with the error on top.
   Exiting without changes then gives up and leaves your manifest in a temp file.
 - `--no-edit` creates the copy straight away.
